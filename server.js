@@ -1,26 +1,21 @@
-//needed imports
 const express = require("express");
-const cors = require("cors");
+const app = express();
+
+//prefered port or 3000
+const port = process.env.port | 3000;
 const mysql = require("mysql");
 
-//.env configuration
-require("dotenv").config();
-
-//creates app with either prefered port or 3000
-const app = express();
-const port = process.env.port | 3000;
-
-//app.set("view engine", "ejs");
-//app.use(express.static("content"));
-
-//express middleware to convert json to javascript objects, neat
-app.use(express.json);
-
 //opens to cross origin
-app.use(cors());
+const cors = require("cors");
 
-//checks if its running
+app.use(cors());
+//express middleware to convert json to javascript objects, neat
+app.use(express.json());
+
 app.listen(port, () => {console.log("running")});
+
+//.env configuration
+require("dotenv").config({path: "stuff.env"});
 
 //initial mysql call for creating database if it dosent exist
 const initial = mysql.createConnection({
@@ -44,6 +39,7 @@ const connection = mysql.createConnection({
 
 connection.connect();
 
+//checks if its running
 //makes sure the table exists
 connection.query("CREATE TABLE IF NOT EXISTS Jobs (id Int NOT NULL PRIMARY KEY, companyname varchar(20), jobtitle varchar(20), startdate DATE, enddate DATE)", function(error){if (error) {throw error;}})
 
@@ -66,7 +62,7 @@ function create() {
 }
 
 //generall function to ask database questions
-function GET(question){
+function ask(question){
     //works on asyncronus promises
     return new Promise((resolve, reject) => {
         //tries to ask if fail will return error
@@ -85,7 +81,7 @@ function GET(question){
 }
 
 //removes a database row after id
-async function DELETE(value){
+async function remove(value){
     if (!value) {
         return;
     }
@@ -94,39 +90,50 @@ async function DELETE(value){
 }
 
 //creates a new database row with information
-async function POST(values){
+async function add(values){
     connection.query("INSERT Jobs VALUES (" + values[0] + ","+ values[1] +","+ values[2] +","+ values[3] + ","+ values[4]+ ","+ values[5] +")",function(error){if (error) {throw error;}});
     return;
 }
 
 //updates content of one entry with the update command
-async function PUT(values){
+async function update(values){
     connection.query("UPDATE Jobs SET companyname = " + values[1] + ", jobtitle = " + values[2] + ", startdate = " + values[3] + ", enddate = " + values[4] + " WHERE id = " + values[0], function(error){if (error) {throw error;}});
     return;
 }
 
 
 //gets all data
-app.get("/GET", async (req, res) => {
-    await GET("SELECT * FROM Jobs");
-    return res;
+app.get("/data", async (req, res) => {
+    let val = await ask("SELECT * FROM Jobs");
+    res.json({val});
+    res.status(500).send();
+})
+
+app.get("/", (req, res) => {
+    res.send("I EXIST");
+    console.log("test");
+    console.log("test");
+    res.send("yep");
 })
 
 //gets specific information (full mysql call)
-app.get("/GET/info", async (req, res) => {
-    await GET(req);
-    return res;
+app.get("/data/specific", async (req, res) => {
+    let val = await ask(req);
+    return res.json({val});;
 })
 
-app.post("/DELETE", async (req, res) => {
-    await DELETE(req);
+
+app.delete("/remove", async (req, res) => {
+    await remove(req);
+    res.json({message: "removed: ", req});
 })
 
-app.post("/PUT", async (req, res) => {
-    await PUT(req);
+app.put("/update", async (req, res) => {
+    await update(req);
+    res.json({message: "updated: ", req});
 })
 
-app.post("/POST", async (req, res) => {
-    await POST(req);
+app.post("/add", async (req, res) => {
+    await add(req);
+    res.json({message: "added: ", req});
 })
-
