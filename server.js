@@ -84,21 +84,20 @@ function ask(question){
 
 //removes a database row after id
 async function remove(value){
-    console.log(value.body.remove);
     connection.query("DELETE FROM Jobs WHERE id=" + value.body.remove, function(error){if (error) {throw error;}})   
     return;
 }
 
 //creates a new database row with information
 async function add(values){
-    connection.query("INSERT Jobs VALUES (" + values[0] + ","+ values[1] +","+ values[2] +","+ values[3] + ","+ values[4]+ ","+ values[5] +")",function(error){if (error) {throw error;}});
+    connection.query("INSERT Jobs VALUES ('" + values.body.id + "','"+ values.body.companyname +"','"+ values.body.jobtitle +"','"+ values.body.startdate + "','"+ values.body.enddate+"')",function(error){if (error) {throw error;}});
     return;
 }
 
 //updates content of one entry with the update command
 async function update(values){
-    let pass = validate(req, 2);
-    connection.query("UPDATE Jobs SET companyname = " + values[1] + ", jobtitle = " + values[2] + ", startdate = " + values[3] + ", enddate = " + values[4] + " WHERE id = " + values[0], function(error){if (error) {throw error;}});
+    console.log(values);
+    connection.query("UPDATE Jobs SET companyname = '" + values.body.companyname + "', jobtitle = '" + values.body.jobtitle + "', startdate = '" + values.body.startdate + "', enddate = '" + values.body.enddate + "' WHERE id = '" + values.body.id + "'", function(error){if (error) {throw error;}});
     return;
 }
 
@@ -134,7 +133,12 @@ app.put("/update", async (req, res) => {
         return;
     }
     await update(req);
-    res.json({message: "updated: ", req});
+    let updated = {
+        id: req.body.id,
+        companyname: req.body.companyname,
+        jobtitle: req.body.jobtitle
+    }
+    res.json({message: "updated: ", updated});
 })
 
 //adds new data
@@ -145,7 +149,13 @@ app.post("/add", async (req, res) => {
         return;
     }
     await add(req);
-    res.json({message: "added: ", req});
+    let added = {
+        id: req.body.id,
+        companyname: req.body.companyname,
+        jobtitle: req.body.jobtitle
+    }
+
+    res.json({message: "added: ", added});
 })
 
 //validates input for add/update with more 1/2 respectively
@@ -195,7 +205,7 @@ async function validate(query, mode) {
     if (query.body.companyname == "") { errors.push("Must have a company name")};
     if (query.body.jobtitle == "") { errors.push("Must have a company title")};
     if (query.body.startdate == "") { errors.push("Must have a startdate")};
-    if (query.body.enddate == "") { errors.push("Database needs a endate, if current occupation put in 00 00 0000")};
+    if (query.body.enddate == "") { errors.push("Database needs a endate, if current occupation put in current date")};
 
     //lenght validation
     if (query.body.id.length > 2147483647) {errors.push("Id is way to long, like what would you even do with an id thats that large")}
@@ -205,11 +215,11 @@ async function validate(query, mode) {
     //date validation, tries to convert input to date object and logs it if it fails
     let date = query.body.startdate;
     let dateObj = new Date(date);
-    if (dateObj == false) {errors.push("StartDate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+    if (isNaN(dateObj)) {errors.push("StartDate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
 
     date = query.body.enddate;
     dateObj = new Date(date);
-    if (dateObj == false) {errors.push("Date in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+    if (isNaN(dateObj)) {errors.push("Enddate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
 
     if (!errors.length == 0) {
         return errors;
