@@ -3,12 +3,14 @@ const app = express();
 
 //prefered port or 3000
 const port = process.env.port | 3000;
+
+//mysql compatability
 const mysql = require("mysql");
 
 //opens to cross origin
 const cors = require("cors");
-
 app.use(cors());
+
 //express middleware to convert json to javascript objects, neat
 app.use(express.json());
 
@@ -82,10 +84,8 @@ function ask(question){
 
 //removes a database row after id
 async function remove(value){
-    if (!value) {
-        return;
-    }
-    connection.query("DELETE FROM Jobs WHERE id=" + value, function(error){if (error) {throw error;}})   
+    console.log(value.body.remove);
+    connection.query("DELETE FROM Jobs WHERE id=" + value.body.remove, function(error){if (error) {throw error;}})   
     return;
 }
 
@@ -97,6 +97,7 @@ async function add(values){
 
 //updates content of one entry with the update command
 async function update(values){
+    let pass = validate(req, 2);
     connection.query("UPDATE Jobs SET companyname = " + values[1] + ", jobtitle = " + values[2] + ", startdate = " + values[3] + ", enddate = " + values[4] + " WHERE id = " + values[0], function(error){if (error) {throw error;}});
     return;
 }
@@ -105,15 +106,7 @@ async function update(values){
 //gets all data
 app.get("/data", async (req, res) => {
     let val = await ask("SELECT * FROM Jobs");
-    res.json({val});
-    res.status(500).send();
-})
-
-app.get("/", (req, res) => {
-    res.send("I EXIST");
-    console.log("test");
-    console.log("test");
-    res.send("yep");
+    return res.json({val});
 })
 
 //gets specific information (full mysql call)
@@ -122,18 +115,106 @@ app.get("/data/specific", async (req, res) => {
     return res.json({val});;
 })
 
-
+//deletes data
 app.delete("/remove", async (req, res) => {
+    let val = await validate(req, 3)
+    if (!val == "") {
+        return res.json({error: val});
+    }
+    let num = req.body.remove;
     await remove(req);
-    res.json({message: "removed: ", req});
+    res.json({message: "removed object with id: " + num});
 })
 
+//updates data
 app.put("/update", async (req, res) => {
+    let val = await validate(req, 2);
+    if (!val == "") {
+        res.json(val);
+        return;
+    }
     await update(req);
     res.json({message: "updated: ", req});
 })
 
+//adds new data
 app.post("/add", async (req, res) => {
+    let val = await validate(req, 1);
+    if (!val == "") {
+        res.json(val);
+        return;
+    }
     await add(req);
     res.json({message: "added: ", req});
 })
+
+//validates input for add/update with more 1/2 respectively
+async function validate(query, mode) {
+    let size = await ask("SELECT id FROM Jobs")
+    let errors = [];
+
+    //loops through the id list to check for matches
+    if (mode == 1) {
+        for (let index = 0; index < size.length; index++) {
+            if (size[index].id == query.body.id) {
+                errors.push("Id must be unique")
+            }
+        }   
+    }
+    //can use an else but prefer another if for readability and future expansion
+    if (mode == 2) {
+        //same as above but uses a bool and makes sure it has a match instead of the opposite
+        let match = false;
+        for (let index = 0; index < size.length; index++) {
+            if (size[index].id == query.body.id) {
+                match = true;
+            }
+        }   
+        if (match == false) {
+            errors.push("Input id must match existing id")
+        }
+    }
+    //checks if possible to delete
+    if (mode == 3) {
+        let match = false;
+        for (let index = 0; index < size.length; index++) {
+            if (size[index].id == query.body.remove) {
+                match = true;
+            }
+        }   
+        if (match == false) {
+            return "Input id must match existing id";
+        }
+        else {
+            console.log("worked");
+            return "";
+        }
+    }
+
+    //a bunch of empty checks
+    if (query.body.companyname == "") { errors.push("Must have a company name")};
+    if (query.body.jobtitle == "") { errors.push("Must have a company title")};
+    if (query.body.startdate == "") { errors.push("Must have a startdate")};
+    if (query.body.enddate == "") { errors.push("Database needs a endate, if current occupation put in 00 00 0000")};
+
+    //lenght validation
+    if (query.body.id.length > 2147483647) {errors.push("Id is way to long, like what would you even do with an id thats that large")}
+    if (query.body.companyname.length > 20) { errors.push("Company name to long, please abbreviate it or shorten it in similiar fashion")};
+    if (query.body.jobtitle.length > 20) { errors.push("Job title name to long, please abbreviate it or shorten it in similiar fashion")};
+
+    //date validation, tries to convert input to date object and logs it if it fails
+    let date = query.body.startdate;
+    let dateObj = new Date(date);
+    if (dateObj == false) {errors.push("StartDate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+
+    date = query.body.enddate;
+    dateObj = new Date(date);
+    if (dateObj == false) {errors.push("Date in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+
+    if (!errors.length == 0) {
+        return errors;
+    }
+    else {
+        return "";
+    }
+}
