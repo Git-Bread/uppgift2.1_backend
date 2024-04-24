@@ -138,7 +138,9 @@ app.put("/update", async (req, res) => {
     let updated = {
         id: req.body.id,
         companyname: req.body.companyname,
-        jobtitle: req.body.jobtitle
+        jobtitle: req.body.jobtitle,
+        companyname: req.body.startDate,
+        jobtitle: req.body.enddate
     }
     res.json({message: "updated: ", updated});
 })
