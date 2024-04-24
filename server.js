@@ -131,7 +131,7 @@ app.delete("/remove", async (req, res) => {
 app.put("/update", async (req, res) => {
     let val = await validate(req, 2);
     if (!val == "") {
-        res.json(val);
+        res.json({error: val});
         return;
     }
     await update(req);
@@ -149,7 +149,7 @@ app.put("/update", async (req, res) => {
 app.post("/add", async (req, res) => {
     let val = await validate(req, 1);
     if (!val == "") {
-        res.json(val);
+        res.json({error: val});
         return;
     }
     await add(req);
@@ -173,7 +173,8 @@ async function validate(query, mode) {
             if (size[index].id == query.body.id) {
                 errors.push("Id must be unique")
             }
-        }   
+        }
+        if (query.body.id == "") { errors.push("Must have an id")};
     }
     //can use an else but prefer another if for readability and future expansion
     if (mode == 2) {
@@ -205,12 +206,13 @@ async function validate(query, mode) {
         }
     }
 
+    let dateErrStart = false;
+    let dateErrEnd = false;
     //a bunch of empty checks
-    if (query.body.id == "") { errors.push("Must have a id")};
     if (query.body.companyname == "") { errors.push("Must have a company name")};
     if (query.body.jobtitle == "") { errors.push("Must have a company title")};
-    if (query.body.startdate == "") { errors.push("Must have a startdate")};
-    if (query.body.enddate == "") { errors.push("Database needs a endate, if current occupation put in current date")};
+    if (query.body.startdate == "") { errors.push("Must have a startdate"); dateErrStart = true};
+    if (query.body.enddate == "") { errors.push("Database needs a enddate, if current occupation put in current date"); dateErrEnd = true};
 
     //lenght validation
     if (query.body.id.length > 2147483647) {errors.push("Id is way to long, like what would you even do with an id thats that large")}
@@ -220,14 +222,18 @@ async function validate(query, mode) {
     //date validation, tries to convert input to date object and logs it if it fails
     let startDate = query.body.startdate;
     let dateObjStart = new Date(startDate);
-    if (isNaN(dateObjStart)) {errors.push("StartDate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
-
+    if (dateErrStart == false) {
+        if (isNaN(dateObjStart)) {errors.push("StartDate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+    }
     let endDate = query.body.enddate;
     let dateObjEnd = new Date(endDate);
-    if (isNaN(dateObjEnd)) {errors.push("Enddate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
-
-    if(dateObjStart > dateObjEnd){
-        errors.push("Start-date can not be earlier than end-date")
+    if (dateErrEnd == false) {
+        if (isNaN(dateObjEnd)) {errors.push("Enddate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+    }
+    if (dateErrEnd == false && dateErrEnd == false) {
+        if(dateObjStart > dateObjEnd){
+            errors.push("Start-date can not be earlier than end-date")
+        }
     }
 
     if (!errors.length == 0) {
