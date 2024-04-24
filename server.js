@@ -105,13 +105,14 @@ async function update(values){
 //gets all data
 app.get("/data", async (req, res) => {
     let val = await ask("SELECT * FROM Jobs");
-    return res.json({val});
+    console.log("fetch");
+    return res.json(val);
 })
 
 //gets specific information (full mysql call)
 app.get("/data/specific", async (req, res) => {
     let val = await ask(req);
-    return res.json({val});;
+    return res.json(val);;
 })
 
 //deletes data
