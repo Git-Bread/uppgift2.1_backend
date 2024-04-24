@@ -31,12 +31,13 @@ initial.connect();
 initial.query("CREATE DATABASE IF NOT EXISTS Labb2Backend",function(error){if (error) {throw error;}})
 initial.end()
 
-//the "real" database connection which will be used for data storage
+//the "real" database connection which will be used for data storage, datestrings to combat full empty timestamps from returning, i dont get why they send that stuff when i timestamp and similar formats exist
 const connection = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE
+    database: process.env.DB_DATABASE,
+    dateStrings: true
 });
 
 connection.connect();
@@ -60,7 +61,7 @@ connection.query("SELECT id FROM Jobs", function(error, results) {
 function create() {
     connection.query("INSERT Jobs VALUES (1,'Glassbolaget','Glassman','2022-02-14','2022-08-17')",function(error){if (error) {throw error;}})
     connection.query("INSERT Jobs VALUES (2,'Glassbolaget2','GlassSergant','2023-02-14','2022-08-17')",function(error){if (error) {throw error;}})
-    connection.query("INSERT Jobs VALUES (3,'Glassbolaget3','GlassGeneral','2024-01-14','CURDATE()')",function(error){if (error) {throw error;}})
+    connection.query("INSERT Jobs VALUES (3,'Glassbolaget3','GlassGeneral','2024-01-14','2024-04-24')",function(error){if (error) {throw error;}})
 }
 
 //generall function to ask database questions
@@ -105,7 +106,6 @@ async function update(values){
 //gets all data
 app.get("/data", async (req, res) => {
     let val = await ask("SELECT * FROM Jobs");
-    console.log("fetch");
     return res.json(val);
 })
 
@@ -117,6 +117,7 @@ app.get("/data/specific", async (req, res) => {
 
 //deletes data
 app.delete("/remove", async (req, res) => {
+    console.log(req.body);
     let val = await validate(req, 3)
     if (!val == "") {
         return res.json({error: val});
@@ -203,6 +204,7 @@ async function validate(query, mode) {
     }
 
     //a bunch of empty checks
+    if (query.body.id == "") { errors.push("Must have a id")};
     if (query.body.companyname == "") { errors.push("Must have a company name")};
     if (query.body.jobtitle == "") { errors.push("Must have a company title")};
     if (query.body.startdate == "") { errors.push("Must have a startdate")};
@@ -214,13 +216,17 @@ async function validate(query, mode) {
     if (query.body.jobtitle.length > 20) { errors.push("Job title name to long, please abbreviate it or shorten it in similiar fashion")};
 
     //date validation, tries to convert input to date object and logs it if it fails
-    let date = query.body.startdate;
-    let dateObj = new Date(date);
-    if (isNaN(dateObj)) {errors.push("StartDate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+    let startDate = query.body.startdate;
+    let dateObjStart = new Date(startDate);
+    if (isNaN(dateObjStart)) {errors.push("StartDate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
 
-    date = query.body.enddate;
-    dateObj = new Date(date);
-    if (isNaN(dateObj)) {errors.push("Enddate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+    let endDate = query.body.enddate;
+    let dateObjEnd = new Date(endDate);
+    if (isNaN(dateObjEnd)) {errors.push("Enddate in the wrong format please use YYYY-MM-DD, for example 2022-11-27")};
+
+    if(dateObjStart > dateObjEnd){
+        errors.push("Start-date can not be earlier than end-date")
+    }
 
     if (!errors.length == 0) {
         return errors;
