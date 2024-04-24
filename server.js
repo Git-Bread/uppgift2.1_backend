@@ -174,7 +174,6 @@ async function validate(query, mode) {
                 errors.push("Id must be unique")
             }
         }
-        if (query.body.id == "") { errors.push("Must have an id")};
     }
     //can use an else but prefer another if for readability and future expansion
     if (mode == 2) {
@@ -209,6 +208,9 @@ async function validate(query, mode) {
     let dateErrStart = false;
     let dateErrEnd = false;
     //a bunch of empty checks
+    if (mode == 1) {
+        if (query.body.id == "") { errors.push("Must have an id name")};
+    }
     if (query.body.companyname == "") { errors.push("Must have a company name")};
     if (query.body.jobtitle == "") { errors.push("Must have a company title")};
     if (query.body.startdate == "") { errors.push("Must have a startdate"); dateErrStart = true};
